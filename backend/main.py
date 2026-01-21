@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from database import industries_collection, articles_collection
+from backend.ai_service import generate_insight
 
 app = FastAPI(title="Industry Insight Explorer API")
 
@@ -21,4 +22,6 @@ def get_articles_by_industry(industry_slug: str):
             {"_id": 0}
         )
     )
+    if not articles:
+        return {"message": "There are no articles"}
     return articles
