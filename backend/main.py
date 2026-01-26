@@ -1,11 +1,19 @@
-from torch import cosine_similarity
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from database import industries_collection, articles_collection
 from embeddings import generate_embeddings
-from backend.ai_service import generate_insight
+from ai_service import generate_insight
 import numpy as np
 
 app = FastAPI(title="Industry Insight Explorer API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify your Vercel domain
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def root():
@@ -54,3 +62,19 @@ def get_articles_by_industry(industry_slug: str):
     if not articles:
         return {"message": "There are no articles"}
     return articles
+
+@app.post("/industries/{industry_slug}/insight")
+def create_insight(industry_slug: str):
+    articles = list(
+        articles_collection.find(
+            {"industry": industry_slug},
+            {"_id": 0}
+        )
+    )
+
+    content = generate_insight(articles)
+
+    return {
+        "industry": industry_slug,
+        "content": content,
+    }

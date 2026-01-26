@@ -19,7 +19,6 @@ def generate_insight(articles: List[dict]) -> str:
         str: AI-generated summary
     """
 
-    # Combine article contents to create context for the model
     combined_articles = " ".join(
         article["content"] for article in articles
         if "content" in article
@@ -28,7 +27,6 @@ def generate_insight(articles: List[dict]) -> str:
     if len(combined_articles) > 2000:
         combined_articles = combined_articles[:2000]
 
-    # Generate summary using the pre-trained model
     summary = summarizer(
         combined_articles,
         max_length=130,
