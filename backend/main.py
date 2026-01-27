@@ -27,9 +27,30 @@ def get_industries():
 # ! conceptual demo of semantic search
 @app.get("/search/industries")
 def search_industries_semantically(query: str):
-    query_embedding = generate_embeddings([query])[0]
+    industries = list(
+        industries_collection.find(
+            {},
+            {"_id": 0, "name": 1, "slug": 1, "description": 1, "embedding": 1},
+        )
+    )
 
-    industries = list(industries_collection.find({}, {"_id": 1, "name": 1, "slug": 1, "embedding": 1}))
+    if not industries:
+        return []
+
+    # If some industries lack embeddings, fall back to simple text filtering for them
+    has_any_embedding = any(ind.get("embedding") for ind in industries)
+    if not has_any_embedding:
+        query_lower = query.lower()
+        matched = [
+            ind
+            for ind in industries
+            if query_lower in ind.get("name", "").lower()
+            or query_lower in ind.get("slug", "").lower()
+            or query_lower in ind.get("description", "").lower()
+        ]
+        return matched[:5]
+
+    query_embedding = generate_embeddings([query])[0]
 
     def cosine_sim(a, b):
         return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)) 
