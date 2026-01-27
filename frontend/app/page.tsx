@@ -53,8 +53,11 @@ export default function Home() {
 			<br />
 			<br />
 
-			<button onClick={searchIndustry} disabled={loading}>
-				Discover
+			<button
+				onClick={searchIndustry}
+				disabled={loading || !query.trim()}
+			>
+				{loading ? 'Searching...' : 'Discover'}
 			</button>
 
 			{searched && !loading && !industry && (
@@ -64,20 +67,24 @@ export default function Home() {
 			{industry && (
 				<>
 					<h2>Detected Industry</h2>
+					<div className="card">
 					<p>
-						<strong>{industry.name}</strong>
+						Based on your query, this content is related to:
+						<strong> {industry.name}</strong>
 					</p>
-
+					</div>
 					<button onClick={generateInsight} disabled={loading}>
-						Generate Insight
+						{loading ? 'Generating...' : 'Generate Insight'}
 					</button>
 				</>
 			)}
 
 			{insight && (
 				<>
+				<div className="card">
 					<h2>Insight</h2>
 					<p>{insight}</p>
+				</div>
 				</>
 			)}
 		</main>
