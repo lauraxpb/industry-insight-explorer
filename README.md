@@ -26,7 +26,7 @@ Industry Insight Explorer centralizes industry-specific content and uses AI to:
 - Extract key insights and trends
 - Enable rapid exploration of industry developments
 
-## 🧠 Key Features
+## Key Features
 
 ### Semantic Industry Detection
 The system uses embeddings to map both:
