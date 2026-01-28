@@ -1,8 +1,8 @@
 from transformers import pipeline
 
 insight_summarizer = pipeline(
-    "summarization",
-    model="facebook/bart-large-cnn"
+    "text2text-generation",
+    model="gpt2"
 )
 
 def generate_insight(industry_slug: str, context: str) -> str:
