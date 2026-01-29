@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import industries_collection, articles_collection
 from embeddings import generate_embeddings
 from ai_service import generate_insight
-import numpy as np
 
 app = FastAPI(title="Industry Insight Explorer API")
 
@@ -26,52 +25,50 @@ def get_industries():
 
 # ! conceptual demo of semantic search
 @app.get("/search/industries")
-def search_industries_semantically(query: str):
-    industries = list(
-        industries_collection.find(
-            {},
-            {"_id": 0, "name": 1, "slug": 1, "description": 1, "embedding": 1},
-        )
-    )
-
-    if not industries:
-        return []
-
-    # If some industries lack embeddings, fall back to simple text filtering for them
-    has_any_embedding = any(ind.get("embedding") for ind in industries)
-    if not has_any_embedding:
-        query_lower = query.lower()
-        matched = [
-            ind
-            for ind in industries
-            if query_lower in ind.get("name", "").lower()
-            or query_lower in ind.get("slug", "").lower()
-            or query_lower in ind.get("description", "").lower()
-        ]
-        return matched[:5]
-
+def search_industries_semantically(query: str, limit: int = 5):
     query_embedding = generate_embeddings([query])[0]
+    try:
+        pipeline = [
+            {
+                "$vectorSearch": {
+                    "index": "vector_index",  # Name of your Atlas Vector Search index
+                    "path": "embedding",
+                    "queryVector": query_embedding,
+                    "numCandidates": limit * 10,  # Number of candidates to consider
+                    "limit": limit,
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "name": 1,
+                    "slug": 1,
+                    "description": 1,
+                    "score": {"$meta": "vectorSearchScore"},
+                }
+            },
+        ]
+        
+        results = list(industries_collection.aggregate(pipeline))
+        return results
+        
+    except Exception as e:
+        print(f"Vector search failed: {e}. Falling back to text search.")
+        query_lower = query.lower()
+        results = list(
+            industries_collection.find(
+                {
+                    "$or": [
+                        {"name": {"$regex": query_lower, "$options": "i"}},
+                        {"slug": {"$regex": query_lower, "$options": "i"}},
+                        {"description": {"$regex": query_lower, "$options": "i"}},
+                    ]
+                },
+                {"_id": 0, "name": 1, "slug": 1, "description": 1},
+            ).limit(limit)
+        )
+        return results
 
-    def cosine_sim(a, b):
-        return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)) 
-
-    for industry in industries:
-        industry_embedding = industry.get("embedding")
-        if industry_embedding:
-            industry["similarity"] = cosine_sim(np.array(query_embedding), np.array(industry_embedding))
-        else:
-            industry["similarity"] = -1  # no embedding means lowest similarity
-
-    industries.sort(key=lambda x: x["similarity"], reverse=True)
-
-    # return top 5 results without embeddings
-    for industry in industries:
-        industry.pop("embedding", None)
-        industry.pop("similarity", None)
-
-    return industries[:5]
-
-# filter articles by slug
 @app.get("/articles/{industry_slug}")
 def get_articles_by_industry(industry_slug: str):
     articles = list(
